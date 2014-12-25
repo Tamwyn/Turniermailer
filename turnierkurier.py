@@ -17,28 +17,78 @@ def GetTournaments():
 
 	cursor.execute(query, (today, nextDate)) #Fuehre die SQL Abfrage aus und ersetze die %s Platzhalter durch die angegebenen Variablen
 
-	GetAge(cursor.fetchall())
-	print("Executed")
-	cursor.close()	
-
-def GetAge(tournaments):
-	print("In Function")
-	cursor = cnxTurnier.cursor()
-	for rows in tournaments:
-		print("In For")
-		TurID = rows[0] #Hole die ID des Turniers aus der Abfrage
-		TurID = int(TurID)
-		query = ("SELECT JahrgID FROM altersklassen WHERE TurnierID = %s")
-		
-		cursor.execute(query, TurID)
-
-		altersklassen = cursor.fetchall()
-
-		for row in altersklassen:
-			print("2nd Function")
-			print(row[0])
+	tournaments = cursor.fetchall()
 	cursor.close()
-	print("End of Function")
+
+	GetAndProcessData(tournaments)
+		
+
+def GetAndProcessData(tournaments):
+		
+	for rows in tournaments:
+		
+		altersklassen = GetAge(rows[0])  #Frage erweiterte Daten zu dem Turnier ab. Dafuer wird jeweils die ID uebergeben
+										#AltersklassenIDs
+		weapons = CheckWeapon(rows[0]) #WaffenIDs
+
+		fechter = FindFencers(altersklassen , weapons )#Suche nach Fechtern fuer die dieses Turnier geeignet ist
+														#FechterIDs
+def GetAge(TurID):
+	cursor = cnxTurnier.cursor()
+
+	query = ("SELECT JahrgID FROM altersklassen WHERE TurnierID =")
+	query += str(TurID) #Da ein insert via %s fehlschlug der umweg ueber append
+	cursor.execute(query)
+    
+	result = cursor.fetchall()
+	cursor.close()
+	
+	return result
+
+
+def CheckWeapon(TurID):
+	cursor = cnxTurnier.cursor()
+	
+	query = ("SELECT WaffeID FROM waffetur WHERE TurnierID =")
+	query += str(TurID) #Da ein insert via %s fehlschlug der umweg ueber append
+	cursor.execute(query)
+	
+	result = cursor.fetchall()
+	cursor.close()
+	
+	return result
+
+def FindFencers(altersklassen, weapons):
+	
+	cursorFechter = cnxFechter.cursor()
+	cursorJahrg   = cnxTurnier.cursor()
+
+	for rowAK in altersklassen:
+		queryZeitraum = ("SELECT Beginn , Ende FROM jahrgaenge WHERE ID =")
+		queryZeitraum += str(rowAK[0]) #Appende die Jahrgangs ID an die Query
+		 
+		cursorJahrg.execute(queryZeitraum)
+		zeitraum = cursorJahrg.fetchall() 
+
+		for rowZ in zeitraum: #Speichere den Zeitraum in lesbareren Variablen
+		 	beginn = rowZ[0]
+		 	ende =rowZ[1]
+
+		queryFencers = ("SELECT ID FROM fechter WHERE JAHRGANG BETWEEN %s AND %s")
+
+		cursorFechter.execute(queryFencers, (beginn , ende)) #Fuege Beginn und Ende beim Between ein
+
+		fechter = cursorFechter.fetchall() #Fechter mit uebereinstimmendem Jahrgang
+
+		for rowW in weapons: #Pruefe ob auch die Waffe uebereinstimmt
+			if ()
+
+		for rowF in fechter: #Debugging
+		 	print(rowF[0])
+
+	cursorFechter.close()
+	cursorJahrg.close()
+
 
 GetTournaments()
 
