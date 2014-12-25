@@ -32,7 +32,7 @@ def GetAndProcessData(tournaments):
 		weapons = CheckWeapon(rows[0]) #WaffenIDs
 
 		fechter = FindFencers(altersklassen , weapons )#Suche nach Fechtern fuer die dieses Turnier geeignet ist
-														#FechterIDs
+														#FechterIDs (Liste vom Typ set ->Jeder Wert nur einmal)
 def GetAge(TurID):
 	cursor = cnxTurnier.cursor()
 
@@ -63,6 +63,8 @@ def FindFencers(altersklassen, weapons):
 	cursorFechter = cnxFechter.cursor()
 	cursorJahrg   = cnxTurnier.cursor()
 
+	matchingFencers = list()  #Die Fechter die informiert werden sollen. (Liste)
+
 	for rowAK in altersklassen:
 		queryZeitraum = ("SELECT Beginn , Ende FROM jahrgaenge WHERE ID =")
 		queryZeitraum += str(rowAK[0]) #Appende die Jahrgangs ID an die Query
@@ -72,19 +74,30 @@ def FindFencers(altersklassen, weapons):
 
 		for rowZ in zeitraum: #Speichere den Zeitraum in lesbareren Variablen
 		 	beginn = rowZ[0]
-		 	ende =rowZ[1]
+		 	ende = rowZ[1]
 
 		queryFencers = ("SELECT ID FROM fechter WHERE JAHRGANG BETWEEN %s AND %s")
 
 		cursorFechter.execute(queryFencers, (beginn , ende)) #Fuege Beginn und Ende beim Between ein
 
 		fechter = cursorFechter.fetchall() #Fechter mit uebereinstimmendem Jahrgang
+		
+		for rowF in fechter: #Nimm den Fechter
+		 	queryWaffe = ("SELECT WaffeID FROM fechterwaffe WHERE FechterID =")
+		 	queryWaffe += str(rowF[0]) #Appende die FechterID
 
-		for rowW in weapons: #Pruefe ob auch die Waffe uebereinstimmt
-			if ()
+		 	cursorFechter.execute(queryWaffe)
+		 	fechterwaffe = cursorFechter.fetchall()
 
-		for rowF in fechter: #Debugging
-		 	print(rowF[0])
+		 	for rowW in weapons: #Pruefe ob die Waffe fuer diesen Fechter mit der des 
+		 						 #Turniers uebereinstimmt
+		 		if rowW[0] in (fechterwaffe[0] ,fechterwaffe[1]): #Index out of Range
+		 			matchingFencers.add(rowF[0])
+
+	set(matchingFencers)
+	print(matchingFencers)
+	return matchingFencers
+
 
 	cursorFechter.close()
 	cursorJahrg.close()
