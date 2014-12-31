@@ -41,7 +41,7 @@ def GetAge(TurID):
 	cursor = cnxTurnier.cursor()
 
 	query = ("SELECT JahrgID FROM altersklassen WHERE TurnierID =")
-	query += str(TurID) #Da ein insert via %s fehlschlug der umweg ueber append
+	query += str(TurID) #Da ein insert via %s fehlschlug der Umweg ueber append
 	cursor.execute(query)
     
 	result = cursor.fetchall()
@@ -54,7 +54,7 @@ def CheckWeapon(TurID):
 	cursor = cnxTurnier.cursor()
 	
 	query = ("SELECT WaffeID FROM waffetur WHERE TurnierID =")
-	query += str(TurID) #Da ein insert via %s fehlschlug der umweg ueber append
+	query += str(TurID) #Da ein insert via %s fehlschlug der Umweg ueber append
 	cursor.execute(query)
 	
 	result = cursor.fetchall()
@@ -109,6 +109,6 @@ def FindFencers(altersklassen, weapons):
 def Inform(informQuery):
 	print("Informiert")
 
-#Schließe die Verbindung zu den Datenbanken
+#Schliesse die Verbindung zu den Datenbanken
 cnxTurnier.close()
 cnxFechter.close()
