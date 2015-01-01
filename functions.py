@@ -10,7 +10,7 @@ cnxFechter = mysql.connector.connect(user='root', password='', host='localhost',
 def GetTournaments():
 	#Abfrage nach den Turnieren in den naechsten 6 Wochen
 	cursor = cnxTurnier.cursor()
-	query =  ("SELECT ID , Name , Datum, Ort, Ausschreibung From turnier WHERE Datum BETWEEN %s AND %s AND casted = 0")
+	query =  ("SELECT ID From turnier WHERE Datum BETWEEN %s AND %s AND casted = 0")
 
 	today = datetime.date.today()
 	nextDate = datetime.date.today() + datetime.timedelta(weeks=6)
@@ -32,8 +32,11 @@ def GetAndProcessData(tournaments):
 		weapons = CheckWeapon(rows[0]) #WaffenIDs
 
 		fechter = FindFencers(altersklassen , weapons )#Suche nach Fechtern fuer die dieses Turnier geeignet ist
-														#FechterIDs (Liste vom Typ set ->Jeder Wert nur einmal)
-		informQuery = list() #Haenge FechterIDs und TurnierIDs hintereinander jede Fechter ID kann pro TurnierID nur einmal vorhanden sein
+														#FechterIDs (Liste vom Typ set ->Jeder Wert nur einmal (set)
+		informQuery = array()
+
+		for rowF in fechter:
+			informQuery.append((rowF[0], rows[0])) #Haenge FechterIDs und TurnierIDs hintereinander jede Fechter ID kann pro TurnierID nur einmal vorhanden sein
 
 	return informQuery
 
@@ -67,7 +70,7 @@ def FindFencers(altersklassen, weapons):
 	cursorFechter = cnxFechter.cursor()
 	cursorJahrg   = cnxTurnier.cursor()
 
-	matchingFencers = list()  #Die Fechter die informiert werden sollen. (Liste)
+	matchingFencers = list()  #Die Fechter deren Waffe und Altersklasse mit der des Turniers uebereinstimmen (Liste)
 
 	for rowAK in altersklassen:
 		queryZeitraum = ("SELECT Beginn , Ende FROM jahrgaenge WHERE ID =")
@@ -80,25 +83,24 @@ def FindFencers(altersklassen, weapons):
 		 	beginn = rowZ[0]
 		 	ende = rowZ[1]
 
-		queryFencers = ("SELECT ID FROM fechter WHERE JAHRGANG BETWEEN %s AND %s")
-
-		cursorFechter.execute(queryFencers, (beginn , ende)) #Fuege Beginn und Ende beim Between ein
-
-		fechter = cursorFechter.fetchall() #Fechter mit uebereinstimmendem Jahrgang
 		
-		for rowF in fechter: #Nimm den Fechter
-		 	queryWaffe = ("SELECT WaffeID FROM fechterwaffe WHERE FechterID =")
-		 	queryWaffe += str(rowF[0]) #Appende die FechterID
+		queryFencers = ("SELECT DISTINCT ID  From fechter as f JOIN fechterwaffe AS fw ON f.ID = fw.FechterID WHERE Jahrgang BETWEEN %s AND %s AND WaffeID =") #Alle Fechter deren Geburtsjahr innerhalb der Range der erfragten Altersklasse liegt und ihre Waffe übereinstimmt
+		
+		if (len(weapons) == 1):
+			queryFencers += str(weapons[0]) #Appende die ID der Waffe 
 
-		 	cursorFechter.execute(queryWaffe)
-		 	fechterwaffe = cursorFechter.fetchall()
+		if (len(weapons) == 2): #Wenn ein Turnier fue Beide Waffen verfuegbar ist Frage auch beide ab. Druch DISTINCT erscheint jeder Fechter nur einmal
+			queryFencers += str(weapons[0]) + " OR WaffeID =" + str(weapons[1])
 
-		 	for rowW in weapons: #Pruefe ob die Waffe fuer diesen Fechter mit der des 
-		 						 #Turniers uebereinstimmt
-		 		if rowW[0] in (fechterwaffe[0]): #Index out of Range
-		 			matchingFencers.add(rowF[0])
+		else:
+			#Should never happen
+			print("Keine Waffe angegeben im Turnier")
+			#break
+		cursorFechter.execute(queryFencers, (beginn , ende)) #Fuege Beginn und Ende beim Between ein
+		matchingFencers.add(cursorFechter.fetchall())
+		
 
-	set(matchingFencers)
+	set(matchingFencers) #Sorge dafür, dass für dieses Turnier jeder Fechter nur einmal vorhanden ist
 	print(matchingFencers)
 	return matchingFencers
 
@@ -111,4 +113,4 @@ def Inform(informQuery):
 
 #Schliesse die Verbindung zu den Datenbanken
 cnxTurnier.close()
-cnxFechter.close()
+cnxFechter.close() 
