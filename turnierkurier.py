@@ -1,4 +1,4 @@
- # coding=utf-8
+#coding=utf-8
 
 import mysql.connector
 import datetime
@@ -19,10 +19,10 @@ loglvl = 0 																##
 ##########################################################################
 try:
 	#Stelle eine Verbindung zur Turniermanagement Datenbank her
-	cnxTurnier = mysql.connector.connect(user='root', password='', host='localhost', database='turniermanagment')
+	cnxTurnier = mysql.connector.connect(user='root', password='password', host='localhost', database='turniermanagment')
 
 	#Stelle eine Verbindung zur Datenbank mit den Daten der Fechter her
-	cnxFechter = mysql.connector.connect(user='root', password='', host='localhost', database='fechten')
+	cnxFechter = mysql.connector.connect(user='root', password='password', host='localhost', database='fechten')
 
 except: #Der Datenbankserver ist anscheinend nicht erreichbar brich daher die Ausfuehrung ab
 	exit("Mindestens eine Datenbank konnte nicht erreicht werden")
@@ -185,13 +185,15 @@ def Inform(informQuery, TurID):
 	#####Erstelle die Email#####
 	mail = "Hallo zusammen, \n"
 	mail += "In kürze steht ein neues Turnier an:\n"
-	mail += "Das " + TurName + ".\n"
-	mail += "Es findet am " + TurDatum + " in " + TurOrt + " statt.\n"
-	mail += "Eine Ausschreibung findet sich unter folgendem Link: <a href='" + TurLink  + "'>" + TurLink + "</a>\n"
+	mail += "Das " + str(TurName) + ".\n"
+	mail += "Es findet am " + str(TurDatum) + " in " + str(TurOrt) + " statt.\n"
+	mail += "Eine Ausschreibung findet sich unter folgendem Link: <a href='" + str(TurLink)  + "'>" +str(TurLink) + "</a>\n"
 	if (TurPflicht == 1): mail += "Dieses Turnier ist ein wichtiges Turnier und es ist ärgerlich dieses zu verpassen\n"
 	mail += "Bitte meldet euch rechtzeitig zurück, ob ihr starten könnt\n"
 	mail += "Mit Fechtergruß\n"
 	mail += "Das Turniermanagmentsystem des FC Lütjensee"
+
+	mail = mail.decode('utf-8') #Konvertiere den Text zu utf-8
 
 	if (loglvl == 1): print(mail)
 
@@ -200,8 +202,8 @@ def Inform(informQuery, TurID):
 	except:
 		quit("Der Mailserver konnte nicht erreicht werden")
 
-	msg = MIMEText(mail.encode("utf-8"), "plain", "utf-8")
-	msg["Subject"] = "Ein Turnier kommt: " + TurName
+	msg = MIMEText(mail, 'plain', 'utf-8')
+	msg["Subject"] = "Ein Turnier kommt: " + str(TurName)
 	msg["From"] = "thore@datensumpf.de"
 
 	cursorAdresse = cnxFechter.cursor()
@@ -213,14 +215,15 @@ def Inform(informQuery, TurID):
 		if (loglvl == 2): print(queryMail)
 
 		cursorAdresse.execute(queryMail)
-		email = formatize.format(cursorAdresse.fetchall())
-		if (loglvl == 1): print("Emailadresse: " + str(email[0].decode("utf-8")))
+		dump = formatize.format(cursorAdresse.fetchall())
+		email = str(dump[0].decode("utf-8"))
+		if (loglvl == 1): print("Emailadresse: " + email)
 
 		#Verfollstaendige das Mail-Formular
-		msg["To"] = str(email[0].decode("utf-8"))
+		msg["To"] = email
 
 		##Versende die Email##
-		s.sendmail("thore@datensumpf.de", str(email[0].decode("utf-8")) , msg.as_string())
+		s.sendmail("thore@datensumpf.de", [email] , msg.as_string())
 	
 	s.quit() ##Schließe die Verbindung zum Mailserver
 
