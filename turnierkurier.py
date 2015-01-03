@@ -135,7 +135,7 @@ def FindFencers(altersklassen, weapons, TurID):
 			
 		else:
 			#Should never happen, sonst informiere welches Turnier keine Waffen hat und beende
-			exit("[ERR]Keine Waffe angegeben in diesem Turnier"+ str(TurID))
+			exit("[ERR]Keine Waffe angegeben in diesem Turnier "+ str(TurID))
 			
 		
 		cursorFechter.execute(queryFencers, (beginn , ende)) #Fuege Beginn und Ende beim Between ein
@@ -230,14 +230,14 @@ def Inform(informQuery, TurID):
 	cursorAdresse.close()	
 	
 def MarkTournament(TurID):
-	if (loglvl ==1): print("Inform")
+	if (loglvl ==1): print("MarkTournament")
 	cursor = cnxTurnier.cursor()
 
 	query = ("UPDATE turnier SET casted='1' WHERE ID=")
 	query += str(TurID)
 	if (loglvl == 2): print(query)
 
-	cursor.execute() #Schreibe, dass das Turnier gecasted wurde und bestaetige mit commit
+	cursor.execute(query) #Schreibe, dass das Turnier gecasted wurde und bestaetige mit commit
 	cnxTurnier.commit()
 
 ##########################################END OF FUNCTIONS##############################################
