@@ -23,9 +23,6 @@ try:
 	#Versuche eine Verbindung zur Datenbank herzustellen
 	cnxTurnier = mysql.connector.connect(user='root', password='password', host='localhost', database='turniermanagment')
 
-	#Stelle eine Verbindung zur Datenbank mit den Daten der Fechter her
-	cnxFechter = mysql.connector.connect(user='root', password='password', host='localhost', database='fechten')
-
 except: #Der Datenbankserver ist anscheinend nicht erreichbar. Daher wird die Ausfuehrung abgebrochen
 	exit("Die Datenbank konnte nicht erreicht werden")
 
@@ -101,9 +98,8 @@ def CheckWeapon(TurID): #Frage die Waffen fuer ein Turnier ab
 def FindFencers(altersklassen, weapons, TurID): #Finde Fechter fuer auf die diese Bedingungen zutreffen 
 	if (loglvl ==1): print("FindFencers")
 	
-	cursorFechter = cnxFechter.cursor()
-	cursorJahrg   = cnxTurnier.cursor()
-
+	cursor = cnxTurnier.cursor()
+	
 	matchingFencers = list()  #Die Fechter deren Waffe und Altersklasse mit der des Turniers uebereinstimmen (Liste)
 
 	for rowAK in altersklassen: #Iteriere ueber die Liste der Alterklassen
@@ -116,8 +112,8 @@ def FindFencers(altersklassen, weapons, TurID): #Finde Fechter fuer auf die dies
 		queryZeitraum = ("SELECT Beginn , Ende FROM jahrgaenge WHERE ID =")
 		queryZeitraum += str(rowAK) #Appende die Jahrgangs ID an die Query
 		if (loglvl == 2): print ("Zeitraum: " + queryZeitraum)
-		cursorJahrg.execute(queryZeitraum)
-		zeitraum = cursorJahrg.fetchall() #Da hier zwei Werte zurueck gegeben werden ist ein Formatieren nicht noetig
+		cursor.execute(queryZeitraum)
+		zeitraum = cursor.fetchall() #Da hier zwei Werte zurueck gegeben werden ist ein Formatieren nicht noetig
 
 		for rowZ in zeitraum: #Speichere den Zeitraum in lesbareren Variablen
 		 	beginn = rowZ[0]
@@ -140,15 +136,14 @@ def FindFencers(altersklassen, weapons, TurID): #Finde Fechter fuer auf die dies
 			exit("[ERR]Keine Waffe angegeben in diesem Turnier "+ str(TurID))
 			
 		
-		cursorFechter.execute(queryFencers, (beginn , ende)) #Fuege Beginn und Ende beim Between (%s) ein
+		cursor.execute(queryFencers, (beginn , ende)) #Fuege Beginn und Ende beim Between (%s) ein
 				
-		matchingFencers.extend(formatize.format(cursorFechter.fetchall())) #Haenge die neuen Fechter an die matchingFencers Liste an.
+		matchingFencers.extend(formatize.format(cursor.fetchall())) #Haenge die neuen Fechter an die matchingFencers Liste an.
 		if (loglvl ==1): 
 			print("matchingFencers: " + str(matchingFencers))	
 			print("")
 		
-	cursorFechter.close()
-	cursorJahrg.close()
+	cursor.close()
 
 	#Sorge dafuer, dass fuer dieses Turnier jeder Fechter nur einmal vorhanden ist
 	#Eine Mehrfachselection kann durch Ueberschneidungen in den Altersklassen entstehen
@@ -162,21 +157,20 @@ def Inform(informQuery, TurID): #Schreibe die Emails
 	if (loglvl ==1): print("Fechter IDs " + str(informQuery) + " fuer TurnierID: " + str(TurID))
 
 	#Hole weitere Turnierangaben
-	cursorTurnier = cnxTurnier.cursor()
+	cursor = cnxTurnier.cursor()
 	
 	#Frage nun die Daten des Turniers ab, welche fuer eine Mail noetig sind
 	queryTournament = ("SELECT Name , Ausschreibung , Pflichtturnier , Datum , Ort FROM turnier WHERE ID =")
 	queryTournament += str(TurID)
 	if (loglvl == 2): print(queryTournament)
 
-	cursorTurnier.execute(queryTournament)
-	dump = cursorTurnier.fetchall() #kein Formatize noetig aufrgund der Abfrage mehrerer Werte
-	turnier = dump[0]
+	cursor.execute(queryTournament)
+	turnier = formatize.format(cursor.fetchall())
 
-	TurName = turnier[0]
+	TurName = turnier[0] 
 	TurLink = turnier[1]
 	TurPflicht = turnier[2]
-	TurDatum = turnier[3].strftime("%a, den %d. %b %Y")
+	TurDatum = turnier[3].strftime("%a, den %d. %b %Y") #Formatiere das Datum nach Tag, den TT. Monat YYYY
 	TurOrt = turnier[4]
 
 	if (loglvl == 1):	
@@ -193,7 +187,7 @@ def Inform(informQuery, TurID): #Schreibe die Emails
 	mail += "Das " + str(TurName) + ".\n"
 	mail += "Es findet am " + str(TurDatum) + " in " + str(TurOrt) + " statt.\n"
 	mail += "Eine Ausschreibung findet sich unter folgendem Link: <a href='" + str(TurLink)  + "'>" +str(TurLink) + "</a>\n"
-	if (TurPflicht == 1): mail += "Dieses Turnier ist ein wichtiges Turnier und es ist ärgerlich dieses zu verpassen\n"
+	if (TurPflicht == 1): mail += "Dieses Turnier ist ein wichtiges lokales Turnier und es ist ärgerlich dieses zu verpassen\n" #Fuege einen besonderen Hinweis auf wichtige bzw. ortsnahe Turniere hinzu
 	mail += "Bitte meldet euch rechtzeitig zurück, ob ihr starten könnt\n"
 	mail += "Mit Fechtergruß\n"
 	mail += "Das Turniermanagmentsystem des FC Lütjensee"
@@ -211,7 +205,6 @@ def Inform(informQuery, TurID): #Schreibe die Emails
 	msg["Subject"] = "Ein Turnier kommt: " + str(TurName)
 	msg["From"] = "thore@datensumpf.de"
 
-	cursorAdresse = cnxFechter.cursor()
 	for fechter in informQuery:
 		if (loglvl == 1): print("FechterID: " + str(fechter))
 		
@@ -219,22 +212,22 @@ def Inform(informQuery, TurID): #Schreibe die Emails
 		queryMail += str(fechter)
 		if (loglvl == 2): print(queryMail)
 
-		cursorAdresse.execute(queryMail)
-		dump = formatize.format(cursorAdresse.fetchall())
-		email = str(dump[0].decode("utf-8"))
+		cursor.execute(queryMail)
+		dump = formatize.format(cursor.fetchall()) #Formatiere die Mailadresse
+		email = str(dump[0].decode("utf-8")) #Formatiere die Mailadresse zu utf-8 um Probleme mit dem @ zu verhindern 
 		if (loglvl == 1): print("Emailadresse: " + email)
 
 		#Verfollstaendige das Mail-Formular
 		msg["To"] = email
 
 		##Versende die Email##
-		s.sendmail("thore@datensumpf.de", [email] , msg.as_string())
+		s.sendmail("turniere@fc-luetjensee.de", [email] , msg.as_string()) #
 	
 	s.quit() ##Schließe die Verbindung zum Mailserver
 
-	cursorAdresse.close()	
+	cursor.close()	
 	
-def MarkTournament(TurID):
+def MarkTournament(TurID): #Schliesse das Turnier aus spaeteren Suchlaeufen aus
 	if (loglvl ==1): print("MarkTournament")
 	cursor = cnxTurnier.cursor()
 
@@ -242,26 +235,26 @@ def MarkTournament(TurID):
 	query += str(TurID)
 	if (loglvl == 2): print(query)
 
-	cursor.execute(query) #Schreibe, dass das Turnier gecasted wurde und bestaetige mit commit
-	cnxTurnier.commit()
+	cursor.execute(query) #Schreibe, dass das Turnier gecasted wurde
+	cursor.close()
+	cnxTurnier.commit() #Bestaetige die Aenderungen in der Datenbank
 
 ##########################################END OF FUNCTIONS##############################################
 
 ########################################################################################################
 
 ##########################################BEGIN IMPLEMENTATION##########################################
-tournaments = GetTournaments() #Rufe eine Liste der Turniere ab
+tournaments = GetTournaments() #Rufe eine Liste der Turniere ab, die noch nicht ausgerufen wurden
 
 for TurID in tournaments:
-	informQuery = GetAndProcessData(TurID) #Rufe eine Liste mit FechterIDs und zugewiesenen TurnierIDs ab
+	informQuery = GetAndProcessData(TurID) #Rufe eine Liste mit FechterIDs ab. Jede ID in dieser Liste ist einzigartig
 
-	Inform(informQuery, TurID)#Versende Emails mit den Ausschreibungen an die Fechter fuer die dieses Turnier geeignet ist
+	Inform(informQuery, TurID)#Versende Emails mit den Ausschreibungen an die Fechter fuer die dieses Turnier geeignet sind
 
 	MarkTournament(TurID) #Speichere in der Datenbank, dass das Turnier gemeldet wurde
 
 
 
 
-#Schliesse die Verbindung zu den Datenbanken
+#Schliesse die Verbindung zu der Datenbank
 cnxTurnier.close()
-cnxFechter.close()
